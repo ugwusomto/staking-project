@@ -1,1 +1,24 @@
-I didn't comple
+I did not implement test for any one of the modules 
+   - would have setup jest and mock for services
+   - i would have mock external modules and expected responses
+   - wrote the test and expectations
+
+I did not setup docker to handle my service 
+  - I would have used dockerfiles for each service
+  - Create a docker-compose.yml to define, build, and manage all application containers.
+
+I did not implement Transaction and Ledger 
+   - Every system has ledger that tracks changes in balance
+   
+   - Transaction that tracks changes in the transaction state - pending , failed , reversed because not every transaction happens instantly so if it is queued or expects a webhook respose then it will be updated after sometime 
+
+I did not implement onchain withdrawal 
+   - It would get user balance from the account service
+   - it would then use the contract instance and talk to the smart contract using the 
+
+I didn't complete alchemy implementation to watch wallet to watch wallet after creation 
+   - This will be queued and then processed on its own 
+   - It will not be done at the point of creating the wallet as it talks to an external address
+
+I did not implememt deposit and sweep to the master wallet 
+   - This comes in once a deposit hits any wallet alchemy or any other third party service we subscribe to will send a webhook request and we process it
