@@ -2,6 +2,10 @@ import "reflect-metadata";
 import * as dotenv from "dotenv";
 dotenv.config();
 import { PeerRPCServer } from "grenache-nodejs-http";
+import { RPCPayload } from "./interface/index.interface";
+import { registerModuleServices } from "./modules/app.module";
+import { authMiddleware } from "./middleware/index.middleware";
+import { ACTIONS } from "./actions/index.actions";
 const Link = require("grenache-nodejs-link");
 
 // Create Grenache link and peer
@@ -26,41 +30,60 @@ const port =
 const service = peer.transport("server");
 service.listen(port);
 
-
 // Announce this service to the DHT
 setInterval(() => {
   // console.log(`Announcing service ${serviceName} on port ${service.port}`);
   link.announce(serviceName, service.port, {});
 }, 1000);
 
+// Register module services
+const { balanceService, cryptoAddressService, authenticationService } =
+  registerModuleServices();
+
 // Handle incoming RPC requests
-service.on("request", async (rid:any, key:any, payload:any, handler:any) => {
-  console.log(`Received request for key: ${key} with payload:`, payload);
-  try {
-    // Example routing based on 'key' in payload
-    switch (payload.action) {
-        case "registerUser":
-          if (!payload.data) throw new Error("No user data provided");
-          console.log("Registering user with data:", payload.data);
-          // const registerResult = await authService.registerUser(payload.data);
-          return handler.reply(null, { success: true, message: "User registered" });
+service.on(
+  "request",
+  async (rid: string, key: string, payload: RPCPayload, handler: any) => {
+    console.log("Payload received in server:", payload);
+    authMiddleware(payload, handler, (validatedPayload) => {
+      try {
+        const userId = validatedPayload.user?.id;
+        const payloadData = validatedPayload.data;
+        // Example routing based on 'key' in payload
+        switch (validatedPayload.action) {
+          case ACTIONS.LOGIN_USER:
+            return handler.reply(
+              null,
+              authenticationService.loginUser(payloadData)
+            );
+          case ACTIONS.GET_BALANCE:
+            return handler.reply(
+              null,
+              balanceService.getBalance(userId, payloadData)
+            );
+          case ACTIONS.WITHDRAW:
+            return handler.reply(
+              null,
+              balanceService.withdraw(userId, payloadData)
+            );
 
-      //   case "loginUser":
-      //     if (!payload.data) throw new Error("No credentials provided");
-      //     const loginResult = await authService.loginUser(payload.data);
-      //     return handler.reply(null, loginResult);
-
-      //   case "getUser":
-      //     if (!payload.data?.userId) throw new Error("No userId provided");
-      //     const user = await userService.getUserById(payload.data.userId);
-      //     return handler.reply(null, user);
-
-      default:
-        return handler.reply(new Error("Unknown method"));
-    }
-  } catch (err) {
-    return handler.reply(err as Error);
+          case ACTIONS.GET_DEPOSIT_ADDRESSES:
+            return handler.reply(
+              null,
+              cryptoAddressService.getDepositAddress(
+                userId,
+                payloadData.currency
+              )
+            );
+          default:
+            return handler.reply(new Error("Unknown method"));
+        }
+      } catch (err) {
+        return handler.reply(err as Error);
+      }
+    });
+    console.log(`Received request for key: ${key} with payload:`, payload);
   }
-});
+);
 
 console.log(`Account Service is running as Grenache RPC node on port ${port}`);
