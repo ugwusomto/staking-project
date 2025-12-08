@@ -83,7 +83,7 @@ export class BalanceService {
     return { status: true, message: "Balance found.", data: balance };
   }
 
-  async withdraw(
+   withdraw(
     userId: string,
     param: { amount: number; currencyId: string; destinationAddress: string }
   ) {
@@ -103,11 +103,14 @@ export class BalanceService {
       if (!balance) {
         return { status: false, message: "Balance not found." };
       }
-      // if (balance.amount < amount) {
-      //   return { status: false, message: "Insufficient funds." };
-      // }
-      // balance.amount -= amount;
-      // await this.balanceRepository.save(balance);
+      if (balance.amount < amount) {
+        return { status: false, message: "Insufficient funds." };
+      }
+
+      // lock the balanace and queue 
+      // create the transaction and set to pending
+      // queue the process for withdrawal
+   
       return { status: true, data: balance };
     } catch (error) {
       console.error("Error in withdraw:", error);
