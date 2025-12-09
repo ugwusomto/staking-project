@@ -3,7 +3,6 @@ import { inject, injectable } from "tsyringe";
 import { BalanceRepository } from "./balance.repository";
 import { IRPCResponse } from "../../interface/index.interface";
 import { CurrencyRepository } from "../currency/currency.repository";
-import { Transaction } from "ethers";
 import { TransactionRepository } from "../transaction/transaction.repository";
 import {
   TRANSACTION_MODE,
@@ -136,7 +135,10 @@ export class BalanceService {
         desitinationAddress: destinationAddress,
       });
 
-      console.log("About to add to queue for withdrawal processing:", transaction);
+      console.log(
+        "About to add to queue for withdrawal processing:",
+        transaction
+      );
       // lock the balance and queue
       await this.balanceQueue.addJob<{ transactionId: string }>(
         QUEUE_NAMES.CRYPTO_WITHDRAWAL_QUEUE,
@@ -155,6 +157,51 @@ export class BalanceService {
       return {
         status: false,
         message: "Failed to process withdrawal.",
+      };
+    }
+  }
+
+  lockBalanceForStaking(
+    userId: string,
+    currencyId: string,
+    amount: number
+  ): IRPCResponse {
+    try {
+      const balance = this.balanceRepository.findByUserIdAndCurrencyId(
+        userId,
+        currencyId
+      );
+      if (!balance) {
+        return { status: false, message: "Balance not found." };
+      }
+      if (balance.amount < amount) {
+        return { status: false, message: "Insufficient funds." };
+      }
+
+      // Lock the balance
+      this.balanceRepository.lockAmount(userId, currencyId, amount);
+
+      // Create a transaction record
+      const transaction = this.transactionRepository.create({
+        userId,
+        currencyId,
+        type: TRANSACTION_TYPE.WITHDRAW,
+        amount: amount,
+        mode: TRANSACTION_MODE.STAKE,
+        status: TRANSACTION_STATUS.PENDING,
+        desitinationAddress: null,
+      });
+
+      return {
+        status: true,
+        message: "Balance locked for staking successfully.",
+        data: { transaction: transaction },
+      };
+    } catch (error) {
+      console.error("Error locking balance for staking:", error);
+      return {
+        status: false,
+        message: "Failed to lock balance for staking.",
       };
     }
   }

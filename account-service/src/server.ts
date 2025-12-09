@@ -75,6 +75,15 @@ service.on(
                 payloadData.currency
               )
             );
+          case ACTIONS.INITIATE_STAKING:
+            return handler.reply(
+              null,
+              await balanceService.lockBalanceForStaking(
+                userId,
+                payloadData.currency,
+                payloadData.amount
+              )
+            );
           default:
             return handler.reply(new Error("Unknown method"));
         }

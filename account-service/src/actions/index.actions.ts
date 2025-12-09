@@ -5,4 +5,6 @@ export enum ACTIONS {
     GET_BALANCE = "getBalance",
     WITHDRAW = "withdraw",
     GET_DEPOSIT_ADDRESSES = "getDepositAddress",
+
+    INITIATE_STAKING = "initiateStaking",
 }

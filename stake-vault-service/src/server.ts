@@ -37,15 +37,13 @@ setInterval(() => {
 }, 1000);
 
 // Register module services
-const { vaultService } =
-  registerModuleServices();
+const { vaultService } = registerModuleServices();
 
 // Handle incoming RPC requests
 service.on(
   "request",
   async (rid: string, key: string, payload: RPCPayload, handler: any) => {
-    console.log("Payload received in server:", payload);
-    authMiddleware(payload, handler, (validatedPayload) => {
+    authMiddleware(payload, handler, async (validatedPayload) => {
       try {
         const userId = validatedPayload.user?.id;
         const payloadData = validatedPayload.data;
@@ -54,9 +52,13 @@ service.on(
           case ACTIONS.DEPOSIT_TO_VAULT:
             return handler.reply(
               null,
-              vaultService.depositToVault(payloadData.amount, payloadData.currency)
+              await vaultService.depositToVault(
+                payloadData.amount,
+                payloadData.currency,
+                validatedPayload.token
+              )
             );
-         
+
           default:
             return handler.reply(new Error("Unknown method"));
         }

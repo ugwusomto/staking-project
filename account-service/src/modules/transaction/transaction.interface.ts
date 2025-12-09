@@ -8,7 +8,7 @@ export interface ITransaction {
   amount: number; // stored as string because of decimal precision
   mode: TRANSACTION_MODE;
   status: TRANSACTION_STATUS;
-  desitinationAddress: string;
+  desitinationAddress: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
