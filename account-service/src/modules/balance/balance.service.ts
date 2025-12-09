@@ -148,7 +148,7 @@ export class BalanceService {
       return {
         status: true,
         message: "Withdrawal initiated successfully.",
-        data: { transactionId: transaction.id },
+        data: { transaction: transaction },
       };
     } catch (error) {
       console.error("Error in withdraw:", error);

@@ -36,6 +36,7 @@ export class Web3Service {
       };
       const sentTx = await wallet.sendTransaction(tx);
       const receipt = await sentTx.wait(2);
+      console.log("Transaction successful with hash:", receipt.hash);
       return receipt.hash;
     } catch (err) {
       console.error("Error sending token:", err);
@@ -44,8 +45,8 @@ export class Web3Service {
   }
 
   private async getSignerWallet(chainId: string): Promise<ethers.HDNodeWallet> {
-    console.log("Getting signer wallet for chainId:", chainId , WEB3_RPC);
-    const provider = await this.getConnectedProvider(WEB3_RPC[chainId]);
+    const WEB3_RPC = process.env.WEB3_RPC_84532;
+    const provider = await this.getConnectedProvider([WEB3_RPC]);
     const wallet = ethers.Wallet.fromPhrase(
       process.env.MASTER_MNEMONIC,
       provider

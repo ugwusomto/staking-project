@@ -64,31 +64,23 @@ peer.request(
   }
 );
 
+// Process Withdrawal
+peer.request(
+  "account_service", // the service key announced by the server
+  {
+    action: ACTIONS.WITHDRAW,
+    data: {
+      currency: "1a2b3c4d-1111-2222-3333-abcdef123452",
+      amount: 0.001,
+      destinationAddress: "0xe06974688b6ba8718caed90443111ed4679023b6",
+    },
+    token: authToken,
+  },
+  { timeout: 10000 },
+  (err, data) => {
+    if (err) return console.error(err);
 
+    console.log("Response:", data);
+  }
+);
 
-
-
-
-
-
-
-
-// Get Deposit addresses
-// peer.request(
-//   "account_service", // the service key announced by the server
-//   {
-//     action: ACTIONS.WITHDRAW,
-//     data: {
-//       currency: "1a2b3c4d-1111-2222-3333-abcdef123452",
-//       amount: 0.001,
-//       destinationAddress: "0xe06974688b6ba8718caed90443111ed4679023b6",
-//     },
-//     token: authToken,
-//   },
-//   { timeout: 10000 },
-//   (err, data) => {
-//     if (err) return console.error(err);
-
-//     console.log("Response:", data);
-//   }
-// );

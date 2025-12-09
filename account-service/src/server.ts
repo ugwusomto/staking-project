@@ -45,7 +45,7 @@ service.on(
   "request",
   async (rid: string, key: string, payload: RPCPayload, handler: any) => {
     // console.log("Payload received in server:", payload);
-    authMiddleware(payload, handler, (validatedPayload) => {
+    authMiddleware(payload, handler, async (validatedPayload) => {
       try {
         const userId = validatedPayload.user?.id;
         const payloadData = validatedPayload.data;
@@ -64,7 +64,7 @@ service.on(
           case ACTIONS.WITHDRAW:
             return handler.reply(
               null,
-              balanceService.withdraw(userId, payloadData)
+              await balanceService.withdraw(userId, payloadData)
             );
 
           case ACTIONS.GET_DEPOSIT_ADDRESSES:
