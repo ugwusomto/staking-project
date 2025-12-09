@@ -58,4 +58,15 @@ export class BalanceRepository {
     balance.updatedAt = new Date();
     return true;
   }
+
+  applyStakedAmount(userId: string, currencyId: string, amount: number): boolean {
+    const balance = this.balances.find((b) => b.userId === userId && b.currencyId === currencyId);
+    if (!balance) {
+      return false;
+    }
+    balance.lockedAmount -= amount;
+    balance.stakedBalance += amount;
+    balance.updatedAt = new Date();
+    return true;
+  }
 }

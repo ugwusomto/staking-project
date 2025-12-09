@@ -37,7 +37,7 @@ setInterval(() => {
 }, 1000);
 
 // Register module services
-const { balanceService, cryptoAddressService, authenticationService } =
+const { balanceService, cryptoAddressService, authenticationService , transactionService } =
   registerModuleServices();
 
 // Handle incoming RPC requests
@@ -82,6 +82,19 @@ service.on(
                 userId,
                 payloadData.currency,
                 payloadData.amount
+              )
+            );
+          case ACTIONS.GET_TRANSACTION:
+            return handler.reply(
+              null,
+              transactionService.getTransactionById(payloadData.transactionId)
+            );
+          case ACTIONS.COMPLETE_STAKE_AND_UNSTAKE:
+            return handler.reply(
+              null,
+               balanceService.completeStakeAndUnstakeTransaction(
+                payloadData.transactionId,
+                payloadData.status
               )
             );
           default:

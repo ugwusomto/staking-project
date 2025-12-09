@@ -205,4 +205,46 @@ export class BalanceService {
       };
     }
   }
+
+  completeStakeAndUnstakeTransaction(
+    transactionId: string,
+    status: TRANSACTION_STATUS
+  ): IRPCResponse {
+    try {
+      const transaction = this.transactionRepository.findById(transactionId);
+      if (!transaction) {
+        return { status: false, message: "Transaction not found." };
+      }
+
+      // Update transaction status
+      this.transactionRepository.updateStatus(transactionId, status);
+
+      // If staking was successful, unlock the balance
+      if (status === TRANSACTION_STATUS.COMPLETED) {
+        this.balanceRepository.applyStakedAmount(
+          transaction.userId,
+          transaction.currencyId,
+          transaction.amount
+        );
+      } else if (status === TRANSACTION_STATUS.FAILED) {
+        // If staking failed, refund the locked amount
+        this.balanceRepository.reverseLockAmount(
+          transaction.userId,
+          transaction.currencyId,
+          transaction.amount
+        );
+      }
+
+      return {
+        status: true,
+        message: "Stake/Unstake transaction completed successfully.",
+      };
+    } catch (error) {
+      console.error("Error completing stake/unstake transaction:", error);
+      return {
+        status: false,
+        message: "Failed to complete stake/unstake transaction.",
+      };
+    }
+  }
 }

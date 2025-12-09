@@ -32,12 +32,13 @@ export class VaultService {
           message: "Insufficient balance to deposit to vault.",
         };
       }
-
+      
       const data = await GrenacheClient.request({
         action: ACTIONS.INITIATE_STAKING,
         data: { currency, amount },
         token,
       });
+
 
       if (!data.status) {
         return {
@@ -46,14 +47,16 @@ export class VaultService {
         };
       }
 
+      console.log("Adding job to vault queue for staking..." , data.transaction);
+
       await this.vaultQueue.addJob<JOB_PARAMS>(
         QUEUE_NAMES.CRYPTO_STAKE_QUEUE,
         {
-          transactionId: data.transaction.id,
-          action: ACTIONS.DEPOSIT_TO_VAULT
+          transactionId: data.data.transaction.id,
+          action: ACTIONS.DEPOSIT_TO_VAULT,
+          token,
         }
       );
-
       return {
         status: true,
         message: "Staking to vault initiated successfully.",

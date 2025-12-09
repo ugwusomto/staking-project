@@ -1,83 +1,45 @@
 import { inject, injectable, singleton } from "tsyringe";
 import { JOB_PARAMS } from "../vault.interface";
+import { GrenacheClient } from "../../../client/grenache-client";
+import { ACTIONS } from "../../../actions/index.actions";
+import { Web3Service } from "../../web3/web3.service";
 
 @singleton()
 class VaultQueueProcessor {
-  constructor() // @inject(Web3Service)
-  // private readonly web3Service: Web3Service,
-  // @inject(CurrencyRepository)
-  // private readonly currencyRepository: CurrencyRepository,
-  // @inject(VaultRepository)
-  // private readonly balanceRepository: VaultRepository
-  {}
+  constructor(
+    @inject(Web3Service)
+    private readonly web3Service: Web3Service
+  ) {}
 
   public async processSmartContractActions(params: JOB_PARAMS): Promise<void> {
-    const { transactionId, action } = params;
+    const { transactionId, action, token } = params;
 
     console.log(
       `Processing action: ${action} for transaction ID: ${transactionId}`
     );
-    // console.log(
-    //   `Processing on-chain withdrawal for transaction ID: ${transactionId}`
-    // );
 
-    // const transaction = this.transactionRepository.findById(transactionId);
+    const data = await GrenacheClient.request({
+      action: ACTIONS.GET_TRANSACTION,
+      data: { transactionId },
+    });
 
-    // if (!transaction) {
-    //   console.error(`Transaction with ID ${transactionId} not found.`);
-    //   return;
-    // }
+    const transaction = data.data;
 
-    // if (transaction.status !== TRANSACTION_STATUS.PENDING) {
-    //   console.warn(
-    //     `Transaction with ID ${transactionId} is not in PENDING status. Current status: ${transaction.status}`
-    //   );
-    //   return;
-    // }
+    if (!data.status || !transaction) {
+      console.error(
+        `Failed to retrieve transaction details for ID: ${transactionId}`
+      );
+      return;
+    }
 
-    // const currency = this.currencyRepository.findByCurrencyId(
-    //   transaction.currencyId
-    // );
-    // if (!currency) {
-    //   console.error(`Currency with ID ${transaction.currencyId} not found.`);
-    //   return;
-    // }
-    // const { amount, desitinationAddress } = transaction;
+    const result = await this.web3Service.stakeTokenAmount(transaction.amount);
 
-    // const result = await this.web3Service.sendToken(
-    //   amount,
-    //   desitinationAddress,
-    //   currency.chainId.toString(),
-    //   currency.isNative,
-    //   currency.decimals
-    // );
-
-    // if (!result) {
-    //   this.transactionRepository.updateStatus(
-    //     transactionId,
-    //     TRANSACTION_STATUS.REVERSED
-    //   );
-
-    //   this.balanceRepository.reverseLockAmount(
-    //     transaction.userId,
-    //     transaction.currencyId,
-    //     transaction.amount
-    //   );
-    //   console.error(
-    //     `Failed to process on-chain withdrawal for transaction ID: ${transactionId}`
-    //   );
-    //   return;
-    // } else {
-    //   this.transactionRepository.updateStatus(
-    //     transactionId,
-    //     TRANSACTION_STATUS.COMPLETED
-    //   );
-    //   this.balanceRepository.deductLockedAmount(
-    //     transaction.userId,
-    //     transaction.currencyId,
-    //     transaction.amount
-    //   );
-    // }
+    if (!result) {
+      const data = await GrenacheClient.request({
+        action: ACTIONS.GET_TRANSACTION,
+        data: { transactionId },
+      });
+    }
 
     // notify user
   }
