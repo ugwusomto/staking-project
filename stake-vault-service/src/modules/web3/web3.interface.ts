@@ -3,7 +3,6 @@ import { BaseContract } from "ethers/src.ts/contract/contract";
 
 export interface IGetContractInstance{
     contractAddress: string,
-    rpc: string[],
     abi: string,
 }
 
