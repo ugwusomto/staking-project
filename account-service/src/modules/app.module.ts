@@ -2,12 +2,15 @@ import { container } from "tsyringe";
 import { BalanceService } from "./balance/balance.service";
 import { CryptoAddressService } from "./crypto-address/crypto-address.service";
 import { AuthenticationService } from "./authentication/authentication.service";
+import BalanceQueueConsumer from "./balance/queues/balance-consumer.queue";
 
 export const registerModuleServices = (): {
   balanceService: BalanceService;
   cryptoAddressService: CryptoAddressService;
     authenticationService: AuthenticationService;
 } => {
+  const consumer =  container.resolve(BalanceQueueConsumer);
+  consumer.init();
   const balanceService = container.resolve(BalanceService);
   const cryptoAddressService = container.resolve(CryptoAddressService);
   const authenticationService = container.resolve(AuthenticationService);

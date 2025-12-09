@@ -44,7 +44,7 @@ const { balanceService, cryptoAddressService, authenticationService } =
 service.on(
   "request",
   async (rid: string, key: string, payload: RPCPayload, handler: any) => {
-    console.log("Payload received in server:", payload);
+    // console.log("Payload received in server:", payload);
     authMiddleware(payload, handler, (validatedPayload) => {
       try {
         const userId = validatedPayload.user?.id;
@@ -82,7 +82,7 @@ service.on(
         return handler.reply(err as Error);
       }
     });
-    console.log(`Received request for key: ${key} with payload:`, payload);
+    console.log(`Received request for key: ${key} with payload:`);
   }
 );
 

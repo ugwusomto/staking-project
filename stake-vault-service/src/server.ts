@@ -64,7 +64,7 @@ service.on(
         return handler.reply(err as Error);
       }
     });
-    console.log(`Received request for key: ${key} with payload:`, payload);
+    console.log(`Received request for key: ${key} with payload:`);
   }
 );
 

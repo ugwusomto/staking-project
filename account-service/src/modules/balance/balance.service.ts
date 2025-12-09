@@ -3,15 +3,28 @@ import { inject, injectable } from "tsyringe";
 import { BalanceRepository } from "./balance.repository";
 import { IRPCResponse } from "../../interface/index.interface";
 import { CurrencyRepository } from "../currency/currency.repository";
+import { Transaction } from "ethers";
+import { TransactionRepository } from "../transaction/transaction.repository";
+import {
+  TRANSACTION_MODE,
+  TRANSACTION_STATUS,
+  TRANSACTION_TYPE,
+} from "../transaction/transaction.config";
+import { QUEUE_NAMES } from "./queues/balance.config.queue";
+import BalanceQueueProducer from "./queues/balance-producer.queue";
 @injectable()
 export class BalanceService {
+  private balanceQueue: BalanceQueueProducer =
+    BalanceQueueProducer.getInstance();
   constructor(
     @inject(BalanceRepository)
     private readonly balanceRepository: BalanceRepository,
     @inject(CryptoAddressService)
     private readonly cryptoAddressService: CryptoAddressService,
     @inject(CurrencyRepository)
-    private readonly currencyRepository: CurrencyRepository
+    private readonly currencyRepository: CurrencyRepository,
+    @inject(TransactionRepository)
+    private readonly transactionRepository: TransactionRepository
   ) {}
 
   createBalance(userId: string, currencyId: string): IRPCResponse {
@@ -47,7 +60,11 @@ export class BalanceService {
         throw new Error("Failed to create crypto address.");
       }
 
-      console.log("Created balance and address:", balance, addressResult.data.cryptoAddress);
+      console.log(
+        "Created balance and address:",
+        balance,
+        addressResult.data.cryptoAddress
+      );
 
       return {
         status: true,
@@ -83,12 +100,12 @@ export class BalanceService {
     return { status: true, message: "Balance found.", data: balance };
   }
 
-   withdraw(
+  async withdraw(
     userId: string,
-    param: { amount: number; currencyId: string; destinationAddress: string }
-  ) {
+    param: { amount: number; currency: string; destinationAddress: string }
+  ): Promise<IRPCResponse> {
     try {
-      const { amount, currencyId, destinationAddress } = param;
+      const { amount, currency: currencyId, destinationAddress } = param;
       const currency = this.currencyRepository.findByCurrencyId(currencyId);
       if (!currency) {
         return {
@@ -107,11 +124,32 @@ export class BalanceService {
         return { status: false, message: "Insufficient funds." };
       }
 
-      // lock the balanace and queue 
-      // create the transaction and set to pending
-      // queue the process for withdrawal
-   
-      return { status: true, data: balance };
+      // use transaction here in a real db
+      this.balanceRepository.lockAmount(userId, currencyId, amount);
+      const transaction = this.transactionRepository.create({
+        userId,
+        currencyId,
+        type: TRANSACTION_TYPE.WITHDRAW,
+        amount: amount,
+        mode: TRANSACTION_MODE.CRYPTO_WITHDRAW,
+        status: TRANSACTION_STATUS.PENDING,
+        desitinationAddress: destinationAddress,
+      });
+
+      console.log("About to add to queue for withdrawal processing:", transaction);
+      // lock the balance and queue
+      await this.balanceQueue.addJob<{ transactionId: string }>(
+        QUEUE_NAMES.CRYPTO_WITHDRAWAL_QUEUE,
+        {
+          transactionId: transaction.id,
+        }
+      );
+
+      return {
+        status: true,
+        message: "Withdrawal initiated successfully.",
+        data: { transactionId: transaction.id },
+      };
     } catch (error) {
       console.error("Error in withdraw:", error);
       return {
