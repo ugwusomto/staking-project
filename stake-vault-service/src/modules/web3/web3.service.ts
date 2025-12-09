@@ -96,10 +96,13 @@ export class Web3Service {
         await erc20ContractInstance.balanceOf(masterWalletAddress)
       );
 
+      console.log("Available token balance for staking:", masterWalletAddress, availableBalance);
+
       if (availableBalance < amount) {
         console.error("Insufficient token balance for staking.");
         return null;
       }
+      
 
       const allowance = this.weiToToken(
         await erc20ContractInstance.allowance(
