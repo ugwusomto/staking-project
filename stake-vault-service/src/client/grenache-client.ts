@@ -1,5 +1,6 @@
 import { PeerRPCClient } from "grenache-nodejs-http";
 import Link from "grenache-nodejs-link";
+import { RPCPayload } from "../interface/index.interface";
 
 export class GrenacheClient {
   private static instance: PeerRPCClient;
@@ -20,16 +21,20 @@ export class GrenacheClient {
 
   // make request to a service
   public static request(
-    serviceKey: string,
-    payload: any,
-    timeout = 10000
+    payload: RPCPayload,
+    serviceKey?: string
   ): Promise<any> {
     this.init();
     return new Promise((resolve, reject) => {
-      this.instance.request(serviceKey, payload, { timeout }, (err, data) => {
-        if (err) return reject(err);
-        resolve(data);
-      });
+      this.instance.request(
+        serviceKey ?? "account_service",
+        payload,
+        { timeout: 10000 },
+        (err, data) => {
+          if (err) return reject(err);
+          resolve(data);
+        }
+      );
     });
   }
 }

@@ -1,5 +1,4 @@
 import { PUBLIC_ACTIONS } from "../actions/index.actions";
-import { RPCPayload } from "../interface/index.interface";
 import jwt from "jsonwebtoken";
 
 export const authMiddleware = async (
@@ -8,12 +7,12 @@ export const authMiddleware = async (
   next: (payload: any) => void
 ) => {
   try {
+
     // Allow public actions
     if (PUBLIC_ACTIONS.includes(payload.action)) {
       return next(payload);
     }
 
-  
     const token = payload.token;
     if (!token) {
       return handler.reply(null, {

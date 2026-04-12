@@ -8,4 +8,8 @@ export enum ACTIONS {
   DEPOSIT_TO_VAULT = "depositToVault",
   WITHDRAW_FROM_VAULT = "withdrawFromVault",
   REQUEST_WITHDRAWAL_FROM_VAULT = "requestWithdrawalFromVault",
+  INITIATE_STAKING = "initiateStaking",
+  GET_TRANSACTION = "getTransactionInfo",
+
+  COMPLETE_STAKE_AND_UNSTAKE = "completeStakeAndUnstake",
 }

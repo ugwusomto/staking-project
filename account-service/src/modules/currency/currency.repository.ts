@@ -8,7 +8,7 @@ export class CurrencyRepository {
       id: "1a2b3c4d-1111-2222-3333-abcdef123452",
       name: "Ethereum",
       symbol: "ETH",
-      chainId: 1,
+      chainId: 84532,
       decimals: 18,
       isNative: true,
     },

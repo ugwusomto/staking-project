@@ -8,6 +8,7 @@ link.start();
 const peer = new PeerRPCClient(link, {});
 peer.init();
 
+
 // peer.request(
 //   "account_service", // the service key announced by the server
 //   {
@@ -20,10 +21,11 @@ peer.init();
 //   { timeout: 10000 },
 //   (err, data) => {
 //     if (err) return console.error(err);
-
+console.log("------------ LOGIN USER ------------");
 //     console.log("Response:", data);
 //   }
 // );
+
 
 const authToken =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjIyMmIzMzMzLTExMTEtMjIyMi0zMzMzLWFiY2RlZjEyMzQ1NiIsImVtYWlsIjoidGVzdEBnbWFpbC5jb20iLCJpYXQiOjE3NjUyMTQyMjIsImV4cCI6MTc2NTMwMDYyMn0.Go45GF3jaW-nP1UTpV_mc5gAxibIN0R8QCowhsKocHI";
@@ -42,6 +44,7 @@ peer.request(
   { timeout: 10000 },
   (err, data) => {
     if (err) return console.error(err);
+console.log("------------ GET USER BALANCE ------------");
 
     console.log("Response:", data);
   }
@@ -61,9 +64,49 @@ peer.request(
   { timeout: 10000 },
   (err, data) => {
     if (err) return console.error(err);
+console.log("------------ GET DEPOSIT ADDRESSES ------------");
 
     console.log("Response:", data);
   }
 );
 
 
+
+// Process Withdrawal
+// peer.request(
+//   "account_service", // the service key announced by the server
+//   {
+//     action: ACTIONS.WITHDRAW,
+//     data: {
+//       currency: "1a2b3c4d-1111-2222-3333-abcdef123452",
+//       amount: 0.001,
+//       destinationAddress: "0xe06974688b6ba8718caed90443111ed4679023b6",
+//     },
+//     token: authToken,
+//   },
+//   { timeout: 10000 },
+//   (err, data) => {
+//     if (err) return console.error(err);
+// console.log("------------ WITHDRAW FUNDS ------------");
+//     console.log("Response:", data);
+//   }
+// );
+
+// Deposit to Staking Vault
+peer.request(
+  "staking_vault_service", // the service key announced by the server
+  {
+    action: ACTIONS.DEPOSIT_TO_VAULT,
+    data: {
+      currency: "1a2b3c4d-1111-2222-3333-abcdef123452",
+      amount: 30,
+    },
+    token: authToken,
+  },
+  { timeout: 10000 },
+  (err, data) => {
+    if (err) return console.error(err);
+    console.log("------------ DEPOSIT TO STAKING VAULT ------------");
+    console.log("Response:", data);
+  }
+);

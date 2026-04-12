@@ -3,15 +3,27 @@ import { inject, injectable } from "tsyringe";
 import { BalanceRepository } from "./balance.repository";
 import { IRPCResponse } from "../../interface/index.interface";
 import { CurrencyRepository } from "../currency/currency.repository";
+import { TransactionRepository } from "../transaction/transaction.repository";
+import {
+  TRANSACTION_MODE,
+  TRANSACTION_STATUS,
+  TRANSACTION_TYPE,
+} from "../transaction/transaction.config";
+import { QUEUE_NAMES } from "./queues/balance.config.queue";
+import BalanceQueueProducer from "./queues/balance-producer.queue";
 @injectable()
 export class BalanceService {
+  private balanceQueue: BalanceQueueProducer =
+    BalanceQueueProducer.getInstance();
   constructor(
     @inject(BalanceRepository)
     private readonly balanceRepository: BalanceRepository,
     @inject(CryptoAddressService)
     private readonly cryptoAddressService: CryptoAddressService,
     @inject(CurrencyRepository)
-    private readonly currencyRepository: CurrencyRepository
+    private readonly currencyRepository: CurrencyRepository,
+    @inject(TransactionRepository)
+    private readonly transactionRepository: TransactionRepository
   ) {}
 
   createBalance(userId: string, currencyId: string): IRPCResponse {
@@ -47,7 +59,11 @@ export class BalanceService {
         throw new Error("Failed to create crypto address.");
       }
 
-      console.log("Created balance and address:", balance, addressResult.data.cryptoAddress);
+      console.log(
+        "Created balance and address:",
+        balance,
+        addressResult.data.cryptoAddress
+      );
 
       return {
         status: true,
@@ -83,12 +99,12 @@ export class BalanceService {
     return { status: true, message: "Balance found.", data: balance };
   }
 
-   withdraw(
+  async withdraw(
     userId: string,
-    param: { amount: number; currencyId: string; destinationAddress: string }
-  ) {
+    param: { amount: number; currency: string; destinationAddress: string }
+  ): Promise<IRPCResponse> {
     try {
-      const { amount, currencyId, destinationAddress } = param;
+      const { amount, currency: currencyId, destinationAddress } = param;
       const currency = this.currencyRepository.findByCurrencyId(currencyId);
       if (!currency) {
         return {
@@ -107,16 +123,127 @@ export class BalanceService {
         return { status: false, message: "Insufficient funds." };
       }
 
-      // lock the balanace and queue 
-      // create the transaction and set to pending
-      // queue the process for withdrawal
-   
-      return { status: true, data: balance };
+      // use transaction here in a real db
+      this.balanceRepository.lockAmount(userId, currencyId, amount);
+      const transaction = this.transactionRepository.create({
+        userId,
+        currencyId,
+        type: TRANSACTION_TYPE.WITHDRAW,
+        amount: amount,
+        mode: TRANSACTION_MODE.CRYPTO_WITHDRAW,
+        status: TRANSACTION_STATUS.PENDING,
+        desitinationAddress: destinationAddress,
+      });
+
+      console.log(
+        "About to add to queue for withdrawal processing:",
+        transaction
+      );
+      // lock the balance and queue
+      await this.balanceQueue.addJob<{ transactionId: string }>(
+        QUEUE_NAMES.CRYPTO_WITHDRAWAL_QUEUE,
+        {
+          transactionId: transaction.id,
+        }
+      );
+
+      return {
+        status: true,
+        message: "Withdrawal initiated successfully.",
+        data: { transaction: transaction },
+      };
     } catch (error) {
       console.error("Error in withdraw:", error);
       return {
         status: false,
         message: "Failed to process withdrawal.",
+      };
+    }
+  }
+
+  lockBalanceForStaking(
+    userId: string,
+    currencyId: string,
+    amount: number
+  ): IRPCResponse {
+    try {
+      const balance = this.balanceRepository.findByUserIdAndCurrencyId(
+        userId,
+        currencyId
+      );
+      if (!balance) {
+        return { status: false, message: "Balance not found." };
+      }
+      if (balance.amount < amount) {
+        return { status: false, message: "Insufficient funds." };
+      }
+
+      // Lock the balance
+      this.balanceRepository.lockAmount(userId, currencyId, amount);
+
+      // Create a transaction record
+      const transaction = this.transactionRepository.create({
+        userId,
+        currencyId,
+        type: TRANSACTION_TYPE.WITHDRAW,
+        amount: amount,
+        mode: TRANSACTION_MODE.STAKE,
+        status: TRANSACTION_STATUS.PENDING,
+        desitinationAddress: null,
+      });
+
+      return {
+        status: true,
+        message: "Balance locked for staking successfully.",
+        data: { transaction: transaction },
+      };
+    } catch (error) {
+      console.error("Error locking balance for staking:", error);
+      return {
+        status: false,
+        message: "Failed to lock balance for staking.",
+      };
+    }
+  }
+
+  completeStakeAndUnstakeTransaction(
+    transactionId: string,
+    status: TRANSACTION_STATUS
+  ): IRPCResponse {
+    try {
+      const transaction = this.transactionRepository.findById(transactionId);
+      if (!transaction) {
+        return { status: false, message: "Transaction not found." };
+      }
+
+      // Update transaction status
+      this.transactionRepository.updateStatus(transactionId, status);
+
+      // If staking was successful, unlock the balance
+      if (status === TRANSACTION_STATUS.COMPLETED) {
+        this.balanceRepository.applyStakedAmount(
+          transaction.userId,
+          transaction.currencyId,
+          transaction.amount
+        );
+      } else if (status === TRANSACTION_STATUS.FAILED) {
+        // If staking failed, refund the locked amount
+        this.balanceRepository.reverseLockAmount(
+          transaction.userId,
+          transaction.currencyId,
+          transaction.amount
+        );
+      }
+
+      return {
+        status: true,
+        message: "Stake/Unstake transaction completed successfully.",
+      };
+    } catch (error) {
+      console.error("Error completing stake/unstake transaction:", error);
+      return {
+        status: false,
+        message: "Failed to complete stake/unstake transaction.",
       };
     }
   }

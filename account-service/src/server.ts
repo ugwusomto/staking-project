@@ -37,15 +37,15 @@ setInterval(() => {
 }, 1000);
 
 // Register module services
-const { balanceService, cryptoAddressService, authenticationService } =
+const { balanceService, cryptoAddressService, authenticationService , transactionService } =
   registerModuleServices();
 
 // Handle incoming RPC requests
 service.on(
   "request",
   async (rid: string, key: string, payload: RPCPayload, handler: any) => {
-    console.log("Payload received in server:", payload);
-    authMiddleware(payload, handler, (validatedPayload) => {
+    // console.log("Payload received in server:", payload);
+    authMiddleware(payload, handler, async (validatedPayload) => {
       try {
         const userId = validatedPayload.user?.id;
         const payloadData = validatedPayload.data;
@@ -64,7 +64,7 @@ service.on(
           case ACTIONS.WITHDRAW:
             return handler.reply(
               null,
-              balanceService.withdraw(userId, payloadData)
+              await balanceService.withdraw(userId, payloadData)
             );
 
           case ACTIONS.GET_DEPOSIT_ADDRESSES:
@@ -75,6 +75,28 @@ service.on(
                 payloadData.currency
               )
             );
+          case ACTIONS.INITIATE_STAKING:
+            return handler.reply(
+              null,
+              await balanceService.lockBalanceForStaking(
+                userId,
+                payloadData.currency,
+                payloadData.amount
+              )
+            );
+          case ACTIONS.GET_TRANSACTION:
+            return handler.reply(
+              null,
+              transactionService.getTransactionById(payloadData.transactionId)
+            );
+          case ACTIONS.COMPLETE_STAKE_AND_UNSTAKE:
+            return handler.reply(
+              null,
+               balanceService.completeStakeAndUnstakeTransaction(
+                payloadData.transactionId,
+                payloadData.status
+              )
+            );
           default:
             return handler.reply(new Error("Unknown method"));
         }
@@ -82,7 +104,7 @@ service.on(
         return handler.reply(err as Error);
       }
     });
-    console.log(`Received request for key: ${key} with payload:`, payload);
+    console.log(`Received request for key: ${key} with payload:`);
   }
 );
 

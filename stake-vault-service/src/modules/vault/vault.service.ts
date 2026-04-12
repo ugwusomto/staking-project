@@ -2,37 +2,71 @@ import { inject, injectable } from "tsyringe";
 import { IRPCResponse } from "../../interface/index.interface";
 import { ACTIONS } from "../../actions/index.actions";
 import { GrenacheClient } from "../../client/grenache-client";
+import VaultQueueProducer from "./queues/vault-producer.queue";
+import { QUEUE_NAMES } from "./queues/vault.config.queue";
+import { JOB_PARAMS } from "./vault.interface";
 
 @injectable()
 export class VaultService {
+  private vaultQueue: VaultQueueProducer = VaultQueueProducer.getInstance();
+
   constructor() {}
 
-  depositToVault(amount: number, currency: string): IRPCResponse {
+  async depositToVault(
+    amount: number,
+    currency: string,
+    token: string
+  ): Promise<IRPCResponse> {
     try {
-      const result = GrenacheClient.request(ACTIONS.DEPOSIT_TO_VAULT, {
-        currency,
+      const {
+        data: { amount: balance },
+      } = await GrenacheClient.request({
+        action: ACTIONS.GET_BALANCE,
+        data: { currency },
+        token,
       });
-      console.log("Deposit to vault result:", result);
+
+      if (balance < amount) {
+        return {
+          status: false,
+          message: "Insufficient balance to deposit to vault.",
+        };
+      }
+      
+      const data = await GrenacheClient.request({
+        action: ACTIONS.INITIATE_STAKING,
+        data: { currency, amount },
+        token,
+      });
+
+
+      if (!data.status) {
+        return {
+          status: false,
+          message: "Failed to initiate staking transaction.",
+        };
+      }
+
+      console.log("Adding job to vault queue for staking..." , data.transaction);
+
+      await this.vaultQueue.addJob<JOB_PARAMS>(
+        QUEUE_NAMES.CRYPTO_STAKE_QUEUE,
+        {
+          transactionId: data.data.transaction.id,
+          action: ACTIONS.DEPOSIT_TO_VAULT,
+          token,
+        }
+      );
       return {
         status: true,
-        message: "Deposit to vault initiated successfully.",
-        data: result,
+        message: "Staking to vault initiated successfully.",
+        data: data ?? null,
       };
-
-      // veirify the balance 
-      // request the balance to be locked
-      // and create a transaction in the account after lock
-      // queue this to be processed 
-      // The queue will processed using ethersjs and instance of the smart contract will be created using
-      // new ethers.Contract with an rpc and abi 
-      //. this will return the required contract instance and will be mapped to the contract interface and the function can be called 
-      //once complete the response will release the locked balance and then will update the transaction status to completed 
-
     } catch (error) {
-      console.error("Error depositing to vault:", error);
+      console.error("Error staking to vault:", error);
       return {
         status: false,
-        message: "Failed to deposit to vault.",
+        message: "Failed to stake to vault.",
       };
     }
   }
